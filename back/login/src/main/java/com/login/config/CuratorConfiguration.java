@@ -24,24 +24,13 @@ public class CuratorConfiguration {
     @Value("${curator.connectionTimeoutMs}")
     private int connectionTimeoutMs;
 
-    @Bean(initMethod = "start")
-
+    @Bean(initMethod = "start", destroyMethod = "close")
     public CuratorFramework curatorFramework() {
-        CuratorFramework client = CuratorFrameworkFactory.newClient(
+        return CuratorFrameworkFactory.newClient(
                 connectString,
                 sessionTimeoutMs,
                 connectionTimeoutMs,
                 new RetryNTimes(retryCount, elapsedTimeMs));
-        client.sync();
-        try {
-            if(null==client.checkExists().forPath("cmd")) {
-                client.create().creatingParentsIfNeeded().withMode()
-            }
-        }catch (Exception e) {
-            return client;
-        }
-
-        return client;
     }
 
 }
