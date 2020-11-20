@@ -1,6 +1,8 @@
 package com.dataService.service;
 
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.ZooDefs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -24,15 +26,33 @@ public class LoginServiceImp implements InitializingBean {
     @Override
     public void afterPropertiesSet()  {
         curatorFramework = curatorFramework.usingNamespace("services-namespace");
-        curatorFramework.sync();
 
         try {
             if(null == curatorFramework.checkExists().forPath(LOGIN_PATH_SERVICES)) {
                 logger.info("create path services .......!!!");
-                curatorFramework.create().forPath(LOGIN_PATH_SERVICES);
-                System.out.println(curatorFramework.getChildren().forPath("/"));
+                curatorFramework.create()
+                        .creatingParentsIfNeeded()
+                        .withMode(CreateMode.PERSISTENT)
+                        .forPath(LOGIN_PATH_SERVICES, "111".getBytes());
             }
 
+            curatorFramework.create()
+                    .creatingParentsIfNeeded()
+                    .withMode(CreateMode.EPHEMERAL)
+                    .forPath("/services/tt", "111".getBytes());
+
+            curatorFramework.create()
+                    .creatingParentsIfNeeded()
+                    .withMode(CreateMode.EPHEMERAL)
+                    .withACL(ZooDefs.Ids.OPEN_ACL_UNSAFE)
+                    .forPath(LOGIN_PATH_SERVICES + "/" + String.valueOf(System.currentTimeMillis()), "01".getBytes());
+
+
+            curatorFramework.create()
+                    .creatingParentsIfNeeded()
+                    .withMode(CreateMode.EPHEMERAL)
+                    .withACL(ZooDefs.Ids.OPEN_ACL_UNSAFE)
+                    .forPath(LOGIN_PATH_SERVICES + "/" + String.valueOf(System.currentTimeMillis()), "01".getBytes());
 
         }catch (Exception e) {
             logger.error("connect zookeeper fail，please check the log >> {}", e.getMessage(), e);
