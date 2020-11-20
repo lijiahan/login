@@ -1,6 +1,7 @@
 package com.login.util;
 
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.recipes.cache.ChildData;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;
 import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import org.slf4j.Logger;
@@ -24,10 +25,12 @@ public class ServicesManager implements InitializingBean {
     @Autowired
     private CuratorFramework curatorFramework;
 
-    private PathChildrenCache servicesCache;
+    private Map<String, PathChildrenCache> servicesCacheMap;
 
     private void constructServices() throws Exception {
         servicesMap = new HashMap<>();
+        servicesCacheMap = new HashMap<>();
+
         List<String> servicesName = curatorFramework.getChildren().forPath(ROOT_PATH_SERVICES);
         for(String service : servicesName) {
             Map<String, String> handlersMap = new HashMap<>();
@@ -37,30 +40,39 @@ public class ServicesManager implements InitializingBean {
             for(String handler : handlersPoint) {
                 String pointPath = servicePath + "/" + handler;
                 String handlerAddress = new String(curatorFramework.getData().forPath(pointPath));
-                logger.info("create service .......{}!!!", handler, handlerAddress);
-                System.out.println(handler + "......" + handlerAddress);
+                logger.info("create service .......{}!!!{}", handler, handlerAddress);
+//                System.out.println(handler + "......" + handlerAddress);
                 handlersMap.put(handler, handlerAddress);
             }
         }
 
-        servicesCache = new PathChildrenCache(curatorFramework, ROOT_PATH_SERVICES, true);
-        servicesCache.start(PathChildrenCache.StartMode.POST_INITIALIZED_EVENT);
-        servicesCache.getListenable().addListener((client, event) -> {
+        PathChildrenCache serviceCache = new PathChildrenCache(curatorFramework, ROOT_PATH_SERVICES, true);
+        serviceCache.start(PathChildrenCache.StartMode.POST_INITIALIZED_EVENT);
+        serviceCache.getListenable().addListener((client, event) -> {
             System.out.println("event type: " +  event.getType());
             if(null != event.getData()) {
-                System.out.println("path: " + event.getData().getPath() + " data: " + event.getData().getData());
+                System.out.println("path: " + event.getData().getPath() + " data: " + new String(event.getData().getData()));
             }
-//            if (event.getType().equals(PathChildrenCacheEvent.Type.CHILD_REMOVED)) {
-//                String oldPath = event.getData().getPath();
-//                logger.info("success to release lock for path:{}", oldPath);
-//            }
+            if (event.getType().equals(PathChildrenCacheEvent.Type.CHILD_ADDED)) {
+                String servicePath = event.getData().getPath();
+                PathChildrenCache handlersCache = new PathChildrenCache(curatorFramework, servicePath, true);
+                handlersCache.start(PathChildrenCache.StartMode.POST_INITIALIZED_EVENT);
+                handlersCache.getListenable().addListener((client1, event1) -> {
+                    System.out.println("handler event type: " +  event1.getType());
+                    if(null != event1.getData()) {
+                        System.out.println("handler path: " + event1.getData().getPath() + " data: " + new String(event1.getData().getData()));
+                    }
+                });
+                servicesCacheMap.put(servicePath, handlersCache);
+            }
         });
+        servicesCacheMap.put(ROOT_PATH_SERVICES, serviceCache);
     }
 
     @Override
     public void afterPropertiesSet()  {
         curatorFramework = curatorFramework.usingNamespace("services-namespace");
-        curatorFramework.sync();
+        //curatorFramework.sync();
 
         try {
             if(null == curatorFramework.checkExists().forPath(ROOT_PATH_SERVICES)) {
@@ -79,7 +91,10 @@ public class ServicesManager implements InitializingBean {
     @PreDestroy
     public void destory() throws Exception {
         logger.info("destory servicesManage .......!!!");
-        servicesCache.close();
+        for (Map.Entry<String, PathChildrenCache> entry : servicesCacheMap.entrySet()) {
+            System.out.println("close ..... " + entry.getKey() );
+            entry.getValue().close();
+        }
         servicesMap.clear();
     }
 }
