@@ -1,0 +1,13 @@
+server:
+  tomcat:
+    uri-encoding: UTF-8
+    max-threads: 1000
+    min-spare-threads: 30
+  port: 9010
+
+curator:
+  retryCount: 5
+  elapsedTimeMs: 5000
+  connectString: localhost:2181
+  sessionTimeoutMs: 60000
+  connectionTimeoutMs: 5000
