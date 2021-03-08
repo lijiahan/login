@@ -1,8 +1,5 @@
 package com.login.config;
 
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.retry.RetryNTimes;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
@@ -14,34 +11,17 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
-import sun.net.www.http.HttpClient;
 
 import java.nio.charset.Charset;
 import java.util.List;
 
-@Configuration
-public class CuratorConfiguration {
-    @Value("${curator.retryCount}")
-    private int retryCount;
-
-    @Value("${curator.elapsedTimeMs}")
-    private int elapsedTimeMs;
-
-    @Value("${curator.connectString}")
-    private String connectString;
-
-    @Value("${curator.sessionTimeoutMs}")
-    private int sessionTimeoutMs;
-
-    @Value("${curator.connectionTimeoutMs}")
-    private int connectionTimeoutMs;
+public class Configuration {
 
     //
     @Value("${http_pool.max_total}")
@@ -62,15 +42,11 @@ public class CuratorConfiguration {
     @Value("${http_pool.validate_after_inactivity}")
     private int inactivity;
 
-    private String charset = "UTF-8";
+    private static final String DEFAULT_CHARSET = "utf8";
 
-    @Bean(initMethod = "start", destroyMethod = "close")
-    public CuratorFramework curatorFramework() {
-        return CuratorFrameworkFactory.newClient(
-                connectString,
-                sessionTimeoutMs,
-                connectionTimeoutMs,
-                new RetryNTimes(retryCount, elapsedTimeMs));
+    @Bean(initMethod = "init", destroyMethod = "stop")
+    ZookeeperClient zookeeperClient() {
+        return new ZookeeperClient();
     }
 
     @Bean
@@ -125,8 +101,7 @@ public class CuratorConfiguration {
         if (null != converterTarget) {
             converterList.remove(converterTarget);
         }
-        Charset defaultCharset = Charset.forName(charset);
+        Charset defaultCharset = Charset.forName(DEFAULT_CHARSET);
         converterList.add(1, new StringHttpMessageConverter(defaultCharset));
     }
-
 }

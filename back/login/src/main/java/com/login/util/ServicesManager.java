@@ -143,4 +143,8 @@ public class ServicesManager implements InitializingBean {
         }
         servicesMap.clear();
     }
+
+    public Map<String, ArrayList<IHandler>> getServicesMap() {
+        return servicesMap;
+    }
 }
