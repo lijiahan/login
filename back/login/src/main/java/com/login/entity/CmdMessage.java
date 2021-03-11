@@ -1,15 +1,15 @@
 package com.login.entity;
 
-public class CmdMsg {
+public class CmdMessage {
     private String uid;
     private String cmd;
     private String data;
 
-    public CmdMsg() {
+    public CmdMessage() {
 
     }
 
-    public CmdMsg(String uid, String cmd, String data) {
+    public CmdMessage(String uid, String cmd, String data) {
         this.uid = uid;
         this.cmd = cmd;
         this.data = data;

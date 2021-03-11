@@ -1,16 +1,16 @@
 package com.login.service;
 
-import com.login.entity.CmdMsg;
+import com.login.entity.CmdMessage;
+import com.login.util.cmd.CmdServices;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class DispatchService {
     @Autowired
-    private SecurityManager securityManager;
+    private CmdServices cmdServices;
 
-    public String dispatch(CmdMsg cmdMsg) {
-
-        return "";
+    public String dispatch(CmdMessage cmdMsg) {
+        return cmdServices.dispath(cmdMsg);
     }
 }

@@ -1,8 +1,9 @@
 package com.login.config;
 
-import com.login.util.ServicesManager;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.framework.recipes.cache.PathChildrenCache;
+import org.apache.curator.framework.recipes.cache.PathChildrenCacheListener;
 import org.apache.curator.framework.recipes.cache.TreeCache;
 import org.apache.curator.framework.recipes.cache.TreeCacheListener;
 import org.apache.curator.framework.recipes.locks.*;
@@ -12,6 +13,7 @@ import org.apache.zookeeper.CreateMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import java.nio.charset.Charset;
 import java.util.List;
@@ -20,27 +22,13 @@ import java.util.concurrent.TimeUnit;
 
 public class ZookeeperClient {
 
-    @Value("${curator.retryCount}")
-    private int retryCount;
-
-    @Value("${curator.elapsedTimeMs}")
-    private int elapsedTimeMs;
-
-    @Value("${curator.connectString}")
-    private String connectString;
-
-    @Value("${curator.sessionTimeoutMs}")
-    private int sessionTimeoutMs;
-
-    @Value("${curator.connectionTimeoutMs}")
-    private int connectionTimeoutMs;
-
     private static final String DEFAULT_CHARSET = "utf8";
     private CuratorFramework client;
 
-    private static final Logger logger = LoggerFactory.getLogger(ServicesManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(ZookeeperClient.class);
 
-    public ZookeeperClient() {
+    public ZookeeperClient(String connectString, int sessionTimeoutMs, int connectionTimeoutMs, int retryCount, int elapsedTimeMs) {
+        System.out.println("ZookeeperClient......." + connectString);
         client = CuratorFrameworkFactory.newClient(
                 connectString,
                 sessionTimeoutMs,
@@ -50,6 +38,7 @@ public class ZookeeperClient {
 
     public void init() {
         client.start();
+        System.out.println("init  ZookeeperClient.......");
         client.getConnectionStateListenable().addListener((client, state) -> {
             if (state== ConnectionState.LOST) {
                 // 连接丢失
@@ -316,6 +305,37 @@ public class ZookeeperClient {
      *
      * @param path 节点名称
      * @param listener 监听器
+     * @return 监听节点的PathChildrenCache实例
+     */
+    public PathChildrenCache watch(String path, PathChildrenCacheListener listener) {
+        PathChildrenCache cache = new PathChildrenCache (client, path, true);
+        cache.getListenable().addListener(listener);
+        try {
+            cache.start();
+        } catch (Exception e) {
+            throw new CuratorClientException("监听节点出错", e);
+        }
+        return cache;
+    }
+
+    /**
+     * 取消监听节点
+     *
+     * @param cache 监听节点的PathChildrenCache实例
+     * @param listener 监听器
+     */
+    public void unwatch(PathChildrenCache cache, PathChildrenCacheListener listener) {
+        if (cache==null) {
+            throw new CuratorClientException("TreeCache实例不能为null");
+        }
+        cache.getListenable().removeListener(listener);
+    }
+
+    /**
+     * 监听数据节点的变化情况
+     *
+     * @param path 节点名称
+     * @param listener 监听器
      * @param pool 线程池
      * @return 监听节点的TreeCache实例
      */
@@ -359,6 +379,14 @@ public class ZookeeperClient {
             throw new CuratorClientException("TreeCache实例不能为null");
         }
         cache.getListenable().removeListener(listener);
+    }
+
+    /**
+     *
+     * @param namespace
+     */
+    public void usingNameSpace(String namespace) {
+        client = client.usingNamespace(namespace);
     }
 
 }

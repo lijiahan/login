@@ -1,5 +1,8 @@
 package com.login.config;
 
+import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.alibaba.fastjson.support.config.FastJsonConfig;
+import com.alibaba.fastjson.support.spring.FastJsonHttpMessageConverter;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
@@ -10,7 +13,10 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.http.HttpMessageConverters;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -19,9 +25,26 @@ import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.List;
 
-public class Configuration {
+@Configuration
+public class NetConfiguration {
+    //
+    @Value("${curator.retryCount}")
+    private int retryCount;
+
+    @Value("${curator.elapsedTimeMs}")
+    private int elapsedTimeMs;
+
+    @Value("${curator.connectString}")
+    private String connectString;
+
+    @Value("${curator.sessionTimeoutMs}")
+    private int sessionTimeoutMs;
+
+    @Value("${curator.connectionTimeoutMs}")
+    private int connectionTimeoutMs;
 
     //
     @Value("${http_pool.max_total}")
@@ -45,8 +68,8 @@ public class Configuration {
     private static final String DEFAULT_CHARSET = "utf8";
 
     @Bean(initMethod = "init", destroyMethod = "stop")
-    ZookeeperClient zookeeperClient() {
-        return new ZookeeperClient();
+    public ZookeeperClient zookeeperClient() {
+        return new ZookeeperClient(connectString, sessionTimeoutMs, connectionTimeoutMs, retryCount, elapsedTimeMs);
     }
 
     @Bean
@@ -103,5 +126,24 @@ public class Configuration {
         }
         Charset defaultCharset = Charset.forName(DEFAULT_CHARSET);
         converterList.add(1, new StringHttpMessageConverter(defaultCharset));
+    }
+
+    @Bean
+    public HttpMessageConverters fastJsonHttpMessageConverters() {
+        // 1.定义一个converters转换消息的对象
+        FastJsonHttpMessageConverter fastConverter = new FastJsonHttpMessageConverter();
+        // 2.添加fastjson的配置信息，比如: 是否需要格式化返回的json数据
+        FastJsonConfig fastJsonConfig = new FastJsonConfig();
+        fastJsonConfig.setSerializerFeatures(SerializerFeature.PrettyFormat);
+        // 3.在converter中添加配置信息
+        fastConverter.setFastJsonConfig(fastJsonConfig);
+        //处理中文乱码问题
+        List<MediaType> oFastMediaTypeList = new ArrayList<>();
+        oFastMediaTypeList.add(MediaType.APPLICATION_JSON_UTF8);
+        fastConverter.setSupportedMediaTypes(oFastMediaTypeList);
+        // 4.将converter赋值给HttpMessageConverter
+        HttpMessageConverter<?> converter = fastConverter;
+        // 5.返回HttpMessageConverters对象
+        return new HttpMessageConverters(converter);
     }
 }
