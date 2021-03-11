@@ -11,3 +11,6 @@ curator:
   connectString: localhost:2181
   sessionTimeoutMs: 60000
   connectionTimeoutMs: 5000
+
+spring:
+  

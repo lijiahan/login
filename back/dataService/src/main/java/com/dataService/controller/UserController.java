@@ -13,6 +13,6 @@ import javax.servlet.http.HttpSession;
 public class UserController {
     @RequestMapping(value="/login", method = RequestMethod.GET)
     public JsonResult login() {
-        return new JsonResult(0, "登录成功");
+        return new JsonResult(0, " service_1 登录成功");
     }
 }
